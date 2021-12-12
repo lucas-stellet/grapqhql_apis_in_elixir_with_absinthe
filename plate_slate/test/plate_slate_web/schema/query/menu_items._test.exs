@@ -1,7 +1,13 @@
 defmodule PlateSlateWeb.Schema.Query.MenuItemsTest do
   use PlateSlateWeb.ConnCase, async: true
 
-  @query_all """
+  setup do
+    PlateSlate.Dev.Seeds.run(Mix.env())
+
+    :ok
+  end
+
+  @query """
   {
     menuItems {
       name
@@ -9,77 +15,77 @@ defmodule PlateSlateWeb.Schema.Query.MenuItemsTest do
   }
   """
 
-  @query_by_name """
+  test "menuItems returns a list of menu items", %{conn: conn} do
+    conn = post(conn, "/api", %{query: @query})
+
+    assert json_response(conn, 200) == %{
+             "data" => %{
+               "menuItems" => [
+                 %{"name" => "French Fries"},
+                 %{"name" => "Lemonade"},
+                 %{"name" => "Papadum"},
+                 %{"name" => "Pasta Salad"},
+                 %{"name" => "Reuben"},
+                 %{"name" => "Soft Drink"},
+                 %{"name" => "Vada Pav"},
+                 %{"name" => "Water"}
+               ]
+             }
+           }
+  end
+
+  @query """
   {
-    menuItems(matching: "reu") {
+    menuItems(order: DESC) {
       name
     }
   }
   """
 
-  @query_with_bad_value """
+  test "menuItems returns a list of menu items on desc order", %{conn: conn} do
+    conn = post(conn, "/api", %{query: @query})
+
+    assert %{
+             "data" => %{
+               "menuItems" => [
+                 %{"name" => "Water"}
+                 | _
+               ]
+             }
+           } = json_response(conn, 200)
+  end
+
+  @query """
   {
-    menuItems(matching: 123) {
+    menuItems(filter: {name: "reu"}) {
       name
     }
   }
   """
 
-  @query_with_variable_by_name """
-    query($term: String) {
-      menuItems(matching: $term) {
+  test "menuItems(matching: name) returns menu items filtered by name", %{conn: conn} do
+    response = post(conn, "/api", %{query: @query})
+
+    assert json_response(response, 200) == %{
+             "data" => %{
+               "menuItems" => [
+                 %{"name" => "Reuben"}
+               ]
+             }
+           }
+  end
+
+  @query """
+    query($name: String) {
+      menuItems(filter: {name: $name}) {
         name
       }
     }
   """
 
-  setup do
-    PlateSlate.Dev.Seeds.run(Mix.env())
-
-    :ok
-  end
-
-  # test "menuItems field returns menu items" do
-  #   conn = build_conn()
-  #   conn = get(conn, "/api", query: @query)
-
-  #   assert json_response(conn, 200) == %{}
-  # end
-
-  test "menuItems returns a list of menu items", %{conn: conn} do
-    conn = post(conn, "/api", %{query: @query_all})
-
-    assert json_response(conn, 200) == %{
-             "data" => %{
-               "menuItems" => [
-                 %{"name" => "Reuben"},
-                 %{"name" => "Vada Pav"},
-                 %{"name" => "French Fries"},
-                 %{"name" => "Papadum"},
-                 %{"name" => "Pasta Salad"},
-                 %{"name" => "Water"},
-                 %{"name" => "Soft Drink"},
-                 %{"name" => "Lemonade"}
-               ]
-             }
-           }
-  end
-
-  test "menuItems(matching: name) returns menu items filtered by name", %{conn: conn} do
-    response = post(conn, "/api", %{query: @query_by_name})
-
-    assert json_response(response, 200) == %{
-             "data" => %{
-               "menuItems" => [
-                 %{"name" => "Reuben"}
-               ]
-             }
-           }
-  end
-
-  @variables %{"term" => "reu"}
+  @variables %{"name" => "reu"}
   test "menuItems(matching: $term) returns menu items filtered by name by variable", %{conn: conn} do
-    response = post(conn, "/api", %{query: @query_with_variable_by_name, variables: @variables})
+    response = post(conn, "/api", %{query: @query, variables: @variables})
 
     assert json_response(response, 200) == %{
              "data" => %{
@@ -89,9 +95,38 @@ defmodule PlateSlateWeb.Schema.Query.MenuItemsTest do
              }
            }
   end
+
+  @query """
+    query($order: SortOrder!) {
+      menuItems(order: $order) {
+        name
+      }
+    }
+  """
+
+  @variables %{"order" => "DESC"}
+  test "menuItems(matching: $term) returns menu items descending using variables", %{conn: conn} do
+    response = post(conn, "/api", %{query: @query, variables: @variables})
+
+    assert %{
+             "data" => %{
+               "menuItems" => [
+                 %{"name" => "Water"} | _
+               ]
+             }
+           } = json_response(response, 200)
+  end
+
+  @query """
+  {
+    menuItems(filter: {name: 123}) {
+      name
+    }
+  }
+  """
 
   test "menuItems(matching: bad value) returns an error", %{conn: conn} do
-    response = post(conn, "/api", %{query: @query_with_bad_value})
+    response = post(conn, "/api", %{query: @query})
 
     assert %{
              "errors" => [
@@ -101,6 +136,86 @@ defmodule PlateSlateWeb.Schema.Query.MenuItemsTest do
              ]
            } = json_response(response, 200)
 
-    assert message == "Argument \"matching\" has invalid value 123."
+    assert message ==
+             "Argument \"filter\" has invalid value {name: 123}.\nIn field \"name\": Expected type \"String\", found 123."
+  end
+
+  @query """
+    {
+      menuItems(filter: {category: "Sandwiches", tag: "Vegetarian"}) {
+        name
+      }
+    }
+  """
+
+  test "menuitems(filter: {}) returns menu items, filtering with a literal", %{conn: conn} do
+    response = post(conn, "/api", %{query: @query})
+
+    assert json_response(response, 200) == %{
+             "data" => %{"menuItems" => [%{"name" => "Vada Pav"}]}
+           }
+  end
+
+  @query """
+  query($filter: MenuItemFilter!) {
+    menuItems(filter : $filter) {
+      name
+      added_on
+    }
+  }
+  """
+
+  @variables %{filter: %{"addedBefore" => "2021-12-11"}}
+  test "menuitems(filter: {addedBefore, Date}) returns menu items, filtered by date custom scalar type",
+       %{
+         conn: conn
+       } do
+    sides = PlateSlate.Repo.get_by!(PlateSlate.Menu.Category, name: "Sides")
+
+    %PlateSlate.Menu.Item{
+      name: "Garlic Fries",
+      added_on: ~D[2021-12-11],
+      price: 2.50,
+      category: sides
+    }
+    |> PlateSlate.Repo.insert!()
+
+    response = post(conn, "/api", %{query: @query, variables: @variables})
+
+    assert json_response(response, 200) == %{
+             "data" => %{
+               "menuItems" => [
+                 %{"added_on" => "2021-12-11", "name" => "Garlic Fries"}
+               ]
+             }
+           }
+  end
+
+  @query """
+  query($filter: MenuItemFilter!) {
+    menuItems(filter : $filter) {
+      name
+    }
+  }
+  """
+
+  @variables %{filter: %{"addedBefore" => "not-a-date"}}
+  test "menuitems(filter: {addedBefore, InvalidDate}) returns an error, filtered by date custom scalar type",
+       %{
+         conn: conn
+       } do
+    response = post(conn, "/api", %{query: @query, variables: @variables})
+
+    assert %{
+             "errors" => [
+               %{
+                 "locations" => [%{"column" => 13, "line" => 2}],
+                 "message" => message
+               }
+             ]
+           } = json_response(response, 200)
+
+    assert message ==
+             "Argument \"filter\" has invalid value $filter.\nIn field \"addedBefore\": Expected type \"Date\", found \"not-a-date\"."
   end
 end
