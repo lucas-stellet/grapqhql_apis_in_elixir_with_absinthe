@@ -3,8 +3,8 @@ defmodule PlateSlateWeb.Schema.Menu do
 
   alias PlateSlateWeb.Resolvers.{Category, Item}
 
-  union :search_result do
-    types([:item, :category])
+  interface :search_result do
+    field :name, :string
 
     resolve_type(fn
       %PlateSlate.Menu.Item{}, _ ->

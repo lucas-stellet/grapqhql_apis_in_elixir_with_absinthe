@@ -32,7 +32,6 @@ defmodule PlateSlate.Menu do
   def search(term) do
     pattern = "%#{term}%"
     Enum.flat_map(@search, &search_ecto(&1, pattern))
-    IO.inspect(Enum.flat_map(@search, &search_ecto(&1, pattern)))
   end
 
   defp filter_with(query, filter) do
@@ -65,7 +64,7 @@ defmodule PlateSlate.Menu do
     end)
   end
 
-  def search_ecto(ecto_schema, pattern) do
+  defp search_ecto(ecto_schema, pattern) do
     Repo.all(
       from q in ecto_schema, where: ilike(q.name, ^pattern) or ilike(q.description, ^pattern)
     )

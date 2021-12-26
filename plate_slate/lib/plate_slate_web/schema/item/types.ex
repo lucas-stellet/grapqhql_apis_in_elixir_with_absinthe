@@ -27,6 +27,7 @@ defmodule PlateSlateWeb.Schema.Item.Types do
   end
 
   object :item do
+    interfaces([:search_result])
     field :id, :id
     field :name, :string
     field :description, :string
