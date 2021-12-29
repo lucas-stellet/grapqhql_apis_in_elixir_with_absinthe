@@ -13,6 +13,7 @@ defmodule PlateSlateWeb.Schema.Category.Types do
 
   object :category do
     interfaces([:search_result])
+    field :id, :id
     field :name, :string
     field :description, :string
 

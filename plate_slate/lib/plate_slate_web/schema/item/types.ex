@@ -1,8 +1,7 @@
 defmodule PlateSlateWeb.Schema.Item.Types do
   use Absinthe.Schema.Notation
 
-  @desc "Filtering options for the menu item list"
-
+  @desc "Filtering options for the item list"
   input_object :item_filter do
     @desc "Matching a name"
     field :name, :string
@@ -26,11 +25,27 @@ defmodule PlateSlateWeb.Schema.Item.Types do
     field :added_before, :date
   end
 
+  @desc "Input parameters for create item mutation."
+  input_object :item_input do
+    field :name, non_null(:string)
+    field :description, :string
+    field :price, non_null(:decimal)
+    field :category_id, non_null(:id)
+  end
+
+  @desc "Item's representation."
   object :item do
     interfaces([:search_result])
+
     field :id, :id
     field :name, :string
     field :description, :string
+    field :price, :decimal
     field :added_on, :date
+  end
+
+  object :item_result do
+    field :item, :item
+    field :errors, list_of(:input_error)
   end
 end

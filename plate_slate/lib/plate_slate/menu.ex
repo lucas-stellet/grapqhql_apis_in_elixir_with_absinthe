@@ -34,6 +34,12 @@ defmodule PlateSlate.Menu do
     Enum.flat_map(@search, &search_ecto(&1, pattern))
   end
 
+  def create_item(attrs \\ %{}) do
+    %Item{}
+    |> Item.changeset(attrs)
+    |> Repo.insert()
+  end
+
   defp filter_with(query, filter) do
     Enum.reduce(filter, query, fn
       {:name, name}, query ->
